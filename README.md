@@ -6,6 +6,22 @@ The implementation under test lives in `proxy-server/src/rate-limiter`. Everythi
 
 The setup is intentionally small, but it models the important production concern: multiple proxy instances share one Postgres database, so request counters are not kept in memory.
 
+## Implementation Under Test
+
+The actual rate limiter task implementation is here:
+
+```text
+root/proxy-server/src/rate-limiter/rate-limiter.ts
+root/proxy-server/src/rate-limiter/rate-limit-repository.ts
+```
+
+Supporting database schema and seed data live here:
+
+```text
+root/proxy-server/src/db/schema.ts
+root/proxy-server/src/db/seed.ts
+```
+
 ```text
 client
   -> proxy-service / proxy-service-2 / proxy-service-3
