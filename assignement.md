@@ -5,12 +5,14 @@ The rate limiter should decide whether a user is allowed to perform an action at
 Unlike a simple in-memory rate limiter, this implementation must store its data in a database,
 because the application runs on multiple server instances.
 
-Task
-Implement a class:
-Rate Limiter Algo - Fixed Window Size
+# Task
 
-Requirements
-Each user can perform a specific action at most maxRequests times within a windowMs time window.
+Implement a class:
+
+# Requirements
+
+Each user can perform a specific action at most `maxRequests` times within a `windowMs` time window.
+
 Example rule:
 
 ```json
@@ -21,43 +23,32 @@ Example rule:
 }
 ```
 
-User table: id
-Rule table: id, action, max_requests, window_ms, user_id Reference to user.id
-Window table: id - compose(action, max_requests, start_time), action Reference to rule.action, user_id Reference to user.id, counter, create_at
+# Database
 
-17:00:00 - 17:01:00
-17:01:00 - 17:02:00
-17:00:36 -> 17:00:00 user_id, action -> 5/10
+Design the necessary table or tables to support the rate limiter.
 
-This means:
-User "user-1" can call "create_order" at most 5 times per 60 seconds.
-Different users should have independent limits.
-Different actions should have independent limits.
+The database should store the rate limit rules and the usage recorded for each active fixed window.
+The application must be able to determine which window a request belongs to and update the stored usage for that window.
+
+For a rule with a 60 second window, requests between `17:00:00` and `17:00:59` belong to the same window.
+A request at `17:01:00` starts the next window.
+
+User `user-1` can call `create_order` at most 5 times per 60 seconds.
+Different users/actions should have independent limits.
 
 For example:
+
+```text
 user-1 + create_order
 user-1 + login
 user-2 + create_order
+```
 
 These should be counted separately.
 
-Database
-Design the necessary table or tables.
-
-## Expected Behavior
-
-```js
-// If the user has not exceeded the limit:
-await limiter.isAllowed("user-1", "create_order"); // true
-
-// If the user has exceeded the limit:
-await limiter.isAllowed("user-1", "create_order"); // false
-```
-
-## Important Requirements
+# Important Requirements
 
 The implementation should be safe when multiple requests happen at the same time.
-
 Think about this case:
 
 ```js
@@ -70,28 +61,9 @@ let action = "create_order";
 
 The system should allow only 5, not all 10.
 
-## Repository Interface
+# Repository Interface
 
 You can use this repository interface or design your own:
-
-```js
-class RateLimiter {
-  constructor(rateLimitRepository) {
-    this.rateLimitRepository = rateLimitRepository;
-  }
-
-  async isAllowed(userId, action) {
-    const windowStart = this.rateLimitRepository.getWindowStart(action);
-    const { maxCapacity } = this.rateLimitRepository.getAction(action);
-    const count = await this.rateLimitRepository.incrementCounter({
-      userId,
-      action,
-      windowStart
-    });
-    return count >= maxCapacity;
-  }
-}
-```
 
 ```js
 class RateLimitRepository {
@@ -109,6 +81,28 @@ class RateLimitRepository {
 
   async deleteOldEvents({ olderThan }) {
     // optional cleanup
+  }
+}
+```
+
+# Expected Behavior
+
+```js
+// If the user has not exceeded the limit:
+await limiter.isAllowed("user-1", "create_order"); // true
+
+// If the user has exceeded the limit:
+await limiter.isAllowed("user-1", "create_order"); // false
+```
+
+```js
+class RateLimiter {
+  constructor(rateLimitRepository) {
+    this.rateLimitRepository = rateLimitRepository;
+  }
+
+  async isAllowed(userId, action) {
+    // Todo
   }
 }
 ```
