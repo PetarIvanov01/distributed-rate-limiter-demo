@@ -1,0 +1,99 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: rate_limiter
+      POSTGRES_PASSWORD: rate_limiter
+      POSTGRES_DB: rate_limiter
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U rate_limiter -d rate_limiter"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  service:
+    build:
+      context: ./proxy-server
+    container_name: proxy-service
+    depends_on:
+      postgres:
+        condition: service_healthy
+      fake-api:
+        condition: service_started
+    environment:
+      DATABASE_URL: postgres://rate_limiter:rate_limiter@postgres:5432/rate_limiter
+      UPSTREAM_API_URL: http://fake-api:4000
+      NODE_ENV: development
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./proxy-server:/app
+      - proxy-node-modules:/app/node_modules
+    command: sh -c "npm install && npm run dev"
+
+  service-2:
+    build:
+      context: ./proxy-server
+    container_name: proxy-service-2
+    depends_on:
+      postgres:
+        condition: service_healthy
+      fake-api:
+        condition: service_started
+    environment:
+      DATABASE_URL: postgres://rate_limiter:rate_limiter@postgres:5432/rate_limiter
+      UPSTREAM_API_URL: http://fake-api:4000
+      NODE_ENV: development
+    ports:
+      - "3001:3000"
+    volumes:
+      - ./proxy-server:/app
+      - proxy-2-node-modules:/app/node_modules
+    command: sh -c "npm install && npm run dev"
+
+  service-3:
+    build:
+      context: ./proxy-server
+    container_name: proxy-service-3
+    depends_on:
+      postgres:
+        condition: service_healthy
+      fake-api:
+        condition: service_started
+    environment:
+      DATABASE_URL: postgres://rate_limiter:rate_limiter@postgres:5432/rate_limiter
+      UPSTREAM_API_URL: http://fake-api:4000
+      NODE_ENV: development
+    ports:
+      - "3002:3000"
+    volumes:
+      - ./proxy-server:/app
+      - proxy-3-node-modules:/app/node_modules
+    command: sh -c "npm install && npm run dev"
+
+  fake-api:
+    build:
+      context: ./fake-api
+    container_name: fake-api
+    environment:
+      FAKE_API_PORT: 4000
+      NODE_ENV: development
+    ports:
+      - "4000:4000"
+    volumes:
+      - ./fake-api:/app
+      - fake-api-node-modules:/app/node_modules
+    command: sh -c "npm install && npm run dev"
+
+volumes:
+  postgres-data:
+  proxy-node-modules:
+  proxy-2-node-modules:
+  proxy-3-node-modules:
+  fake-api-node-modules:
